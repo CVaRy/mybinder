@@ -1,5 +1,5 @@
 # Resmi Jupyter taban imajından başla
-FROM jupyter/base-notebook:python-3.10
+FROM dorowu/ubuntu-desktop-lxde-vnc
 
 # Root olarak sistem bağımlılıklarını yükle
 USER root
