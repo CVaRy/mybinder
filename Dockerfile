@@ -1,5 +1,5 @@
 # Start from the Jupyter base image
-FROM gezp/ubuntu-desktop
+FROM kasmweb/ubuntu-focal-desktop
 
 # Switch to root to install system dependencies
 USER root
