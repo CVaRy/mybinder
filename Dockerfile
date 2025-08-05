@@ -54,7 +54,7 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js (required for some Playwright features)
-RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
+RUN curl -sL https://deb.nodesource.com/setup_21.x | bash - && \
     apt-get install -y nodejs && \
     npm install -g playwright
 
