@@ -7,6 +7,7 @@ USER root
 # Install Playwright system dependencies and other required packages
 RUN apt-get update && \
     apt-get install -y \
+    # Playwright core dependencies
     libnss3 \
     libnspr4 \
     libatk1.0-0 \
@@ -28,14 +29,38 @@ RUN apt-get update && \
     libcairo2 \
     libasound2 \
     libatspi2.0-0 \
+    # Additional dependencies that might be needed
+    libglib2.0-0 \
+    libgdk-pixbuf2.0-0 \
+    libstdc++6 \
+    libgcc1 \
+    libxtst6 \
+    libxrender1 \
+    libfontconfig1 \
+    libpci3 \
+    libuuid1 \
+    # Tools and utilities
     wget \
+    gnupg \
+    git \
+    curl \
+    unzip \
+    # Fonts
     fonts-noto-color-emoji \
+    fonts-liberation \
+    fonts-freefont-ttf \
+    # Clean up
     && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright browsers as root (they'll be available to all users)
-RUN playwright install chromium && \
-    playwright install firefox && \
-    playwright install webkit
+# Install Node.js (required for some Playwright features)
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g playwright
+
+# Install Playwright browsers as root
+RUN npx playwright install --with-deps chromium && \
+    npx playwright install --with-deps firefox && \
+    npx playwright install --with-deps webkit
 
 # Switch back to jovyan user
 USER ${NB_UID}
@@ -51,10 +76,16 @@ RUN pip install --no-cache-dir \
     beautifulsoup4 \
     requests \
     selenium \
-    pytest
+    pytest \
+    # Additional useful packages
+    scipy \
+    scikit-learn \
+    seaborn \
+    plotly
 
 # For Jupyter widgets support
-RUN jupyter nbextension enable --py widgetsnbextension --sys-prefix
+RUN jupyter nbextension enable --py widgetsnbextension --sys-prefix && \
+    jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
 # Set environment variables
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/jovyan/.cache/ms-playwright
