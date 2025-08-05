@@ -59,30 +59,4 @@ RUN curl -sL https://deb.nodesource.com/setup_21.x | bash - && \
     apt-get install -y nodejs && \
     npm install -g playwright
 
-# Switch back to jovyan user
-USER ${NB_UID}
 
-# Install Python dependencies
-RUN pip install --no-cache-dir \
-    playwright \
-    pandas \
-    numpy \
-    matplotlib \
-    jupyterlab \
-    ipywidgets \
-    beautifulsoup4 \
-    requests \
-    selenium \
-    pytest \
-    # Additional useful packages
-    scipy \
-    scikit-learn \
-    seaborn \
-    plotly
-
-# For Jupyter widgets support
-RUN jupyter nbextension enable --py widgetsnbextension --sys-prefix && \
-    jupyter labextension install @jupyter-widgets/jupyterlab-manager
-
-# Set environment variables
-ENV PLAYWRIGHT_BROWSERS_PATH=/home/jovyan/.cache/ms-playwright
