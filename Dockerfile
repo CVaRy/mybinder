@@ -25,6 +25,7 @@ RUN apt-get update && \
     libxrandr2 \
     libgbm1 \
     libgtk-3-0 \
+    libx11-xcb1 \
     libpango-1.0-0 \
     libcairo2 \
     libasound2 \
