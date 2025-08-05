@@ -1,102 +1,65 @@
-# Start from the Jupyter base image
-FROM jupyter/base-notebook
+# Resmi Jupyter taban imajından başla
+FROM jupyter/base-notebook:python-3.10
 
-# Switch to root to install system dependencies
+# Root olarak sistem bağımlılıklarını yükle
 USER root
 
-# Install Playwright system dependencies and other required packages
+# 1. Önce temel sistem güncellemelerini yap
 RUN apt-get update && \
-    apt-get install -y \
-    # Playwright core dependencies
-    libnss3 \
-    libnspr4 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libdbus-1-3 \
-    libxcb1 \
-    libxkbcommon0 \
-    libx11-6 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libgtk-3-0 \
-    libgtk-4-1 \
-    libx11-xcb1 \
-    libpango-1.0-0 \
-    libcairo2 \
-    libasound2 \
-    libatspi2.0-0 \
-    # GStreamer and related
-    gstreamer1.0-libav \
-    gstreamer1.0-plugins-base \
-    gstreamer1.0-plugins-good \
-    gstreamer1.0-plugins-bad \
-    gstreamer1.0-plugins-ugly \
-    gstreamer1.0-tools \
-    libgstreamer1.0-0 \
-    libgstreamer-plugins-base1.0-0 \
-    # Additional dependencies
-    libglib2.0-0 \
-    libgdk-pixbuf2.0-0 \
-    libstdc++6 \
-    libgcc1 \
-    libxtst6 \
-    libxrender1 \
-    libfontconfig1 \
-    libpci3 \
-    libuuid1 \
-    libatomic1 \
-    libxslt1.1 \
-    libvpx7 \
-    libopus0 \
-    libwebpdemux2 \
-    libwebpmux3 \
-    libharfbuzz-icu0 \
-    libenchant-2-2 \
-    libsecret-1-0 \
-    libhyphen0 \
-    libmanette-0.2-0 \
-    libegl1 \
-    libgles2 \
-    libx264-164 \
-    libavif15 \
-    # FLite TTS (text-to-speech)
-    flite \
-    # Tools and utilities
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
     wget \
     gnupg \
-    git \
     curl \
-    unzip \
-    sudo \
-    # Fonts
-    fonts-noto-color-emoji \
-    fonts-liberation \
-    fonts-freefont-ttf \
-    # Clean up
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js (required for some Playwright features)
-RUN curl -sL https://deb.nodesource.com/setup_21.x | bash - && \
-    apt-get install -y nodejs && \
-    npm install -g playwright
+# 2. Node.js için gerekli depoları ekle
+RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash -
 
-# Configure jovyan user with sudo privileges and proper permissions
-RUN echo "jovyan ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
-    chown -R jovyan:users /home/jovyan && \
-    chmod -R 775 /home/jovyan && \
-    chown -R jovyan:users /opt/conda && \
-    chmod -R 775 /opt/conda
+# 3. Tüm bağımlılıkları tek seferde yükle
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    # Temel grafik kütüphaneleri
+    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+    libdrm2 libgbm1 libx11-6 libxcb1 libxcomposite1 \
+    libxdamage1 libxext6 libxfixes3 libxrandr2 \
+    
+    # GStreamer ve multimedya
+    gstreamer1.0-libav gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
+    libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 \
+    
+    # Diğer gerekli kütüphaneler
+    libpango-1.0-0 libcairo2 libasound2 libatspi2.0-0 \
+    libglib2.0-0 libgdk-pixbuf2.0-0 libxtst6 libxrender1 \
+    libfontconfig1 libpci3 libxslt1.1 libvpx7 libopus0 \
+    libwebpdemux2 libwebpmux3 libharfbuzz-icu0 libatomic1 \
+    
+    # Araçlar
+    git unzip sudo \
+    
+    # Fontlar
+    fonts-liberation fonts-noto fonts-freefont-ttf \
+    
+    # Node.js
+    nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright browsers and dependencies
+# 4. Playwright'ı global olarak yükle
+RUN npm install -g playwright@latest
+
+# 5. Tarayıcıları ve bağımlılıkları yükle
 RUN npx playwright install --with-deps
 
-# Switch back to jovyan user and set home directory
+# 6. Jovyan kullanıcısı için izinleri ayarla
+RUN chown -R jovyan:users /home/jovyan && \
+    chmod -R 775 /home/jovyan && \
+    echo "jovyan ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Jovyan kullanıcısına geç ve çalışma dizinini ayarla
 USER jovyan
 WORKDIR /home/jovyan
-ENV HOME /home/jovyan
+ENV HOME=/home/jovyan
+
+# Playwright ortam değişkenleri
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/jovyan/.cache/ms-playwright
