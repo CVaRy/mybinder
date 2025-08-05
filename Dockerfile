@@ -57,11 +57,6 @@ RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
     apt-get install -y nodejs && \
     npm install -g playwright
 
-# Install Playwright browsers as root
-RUN npx playwright install --with-deps chromium && \
-    npx playwright install --with-deps firefox && \
-    npx playwright install --with-deps webkit
-
 # Switch back to jovyan user
 USER ${NB_UID}
 
