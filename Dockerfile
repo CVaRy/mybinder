@@ -1,5 +1,5 @@
 # Start from the Jupyter base image
-FROM jupyter/base-notebook:python-3.9
+FROM andrewosh/binder-base
 
 # Switch to root to install system dependencies
 USER root
