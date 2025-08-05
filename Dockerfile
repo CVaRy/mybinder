@@ -4,9 +4,6 @@ FROM dorowu/ubuntu-desktop-lxde-vnc
 # Root olarak sistem bağımlılıklarını yükle
 USER root
 
-# 1. Önce temel sistem güncellemelerini yap
-RUN apt-get update
-
 # 2. Node.js için gerekli depoları ekle
 RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash -
 
