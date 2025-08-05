@@ -1,5 +1,5 @@
 # Start from the Jupyter base image
-FROM node:22-alpine
+FROM jupyter/base-notebook:python-3.9
 
 # Switch to root to install system dependencies
 USER root
