@@ -25,12 +25,22 @@ RUN apt-get update && \
     libxrandr2 \
     libgbm1 \
     libgtk-3-0 \
+    libgtk-4-1 \
     libx11-xcb1 \
     libpango-1.0-0 \
     libcairo2 \
     libasound2 \
     libatspi2.0-0 \
-    # Additional dependencies that might be needed
+    # GStreamer and related
+    gstreamer1.0-libav \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-tools \
+    libgstreamer1.0-0 \
+    libgstreamer-plugins-base1.0-0 \
+    # Additional dependencies
     libglib2.0-0 \
     libgdk-pixbuf2.0-0 \
     libstdc++6 \
@@ -40,6 +50,23 @@ RUN apt-get update && \
     libfontconfig1 \
     libpci3 \
     libuuid1 \
+    libatomic1 \
+    libxslt1.1 \
+    libvpx7 \
+    libopus0 \
+    libwebpdemux2 \
+    libwebpmux3 \
+    libharfbuzz-icu0 \
+    libenchant-2-2 \
+    libsecret-1-0 \
+    libhyphen0 \
+    libmanette-0.2-0 \
+    libegl1 \
+    libgles2 \
+    libx264-164 \
+    libavif15 \
+    # FLite TTS (text-to-speech)
+    flite \
     # Tools and utilities
     wget \
     gnupg \
@@ -65,6 +92,9 @@ RUN echo "jovyan ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
     chmod -R 775 /home/jovyan && \
     chown -R jovyan:users /opt/conda && \
     chmod -R 775 /opt/conda
+
+# Install Playwright browsers and dependencies
+RUN npx playwright install --with-deps
 
 # Switch back to jovyan user and set home directory
 USER jovyan
