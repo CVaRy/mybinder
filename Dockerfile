@@ -1,5 +1,5 @@
 # Start from the Jupyter base image
-FROM jupyter/base-notebook:python-3.9
+FROM gezp/ubuntu-desktop
 
 # Switch to root to install system dependencies
 USER root
