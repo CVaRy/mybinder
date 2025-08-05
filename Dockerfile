@@ -32,6 +32,11 @@ RUN apt-get update && \
     fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Playwright browsers as root (they'll be available to all users)
+RUN playwright install chromium && \
+    playwright install firefox && \
+    playwright install webkit
+
 # Switch back to jovyan user
 USER ${NB_UID}
 
@@ -47,10 +52,6 @@ RUN pip install --no-cache-dir \
     requests \
     selenium \
     pytest
-
-# Install Playwright browsers
-RUN playwright install chromium
-RUN playwright install-deps
 
 # For Jupyter widgets support
 RUN jupyter nbextension enable --py widgetsnbextension --sys-prefix
