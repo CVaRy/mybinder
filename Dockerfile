@@ -1,7 +1,6 @@
 # Start from the Jupyter base image
 FROM jupyter/base-notebook
 
-
 # Switch to root to install system dependencies
 USER root
 
@@ -47,6 +46,7 @@ RUN apt-get update && \
     git \
     curl \
     unzip \
+    sudo \
     # Fonts
     fonts-noto-color-emoji \
     fonts-liberation \
@@ -59,4 +59,14 @@ RUN curl -sL https://deb.nodesource.com/setup_21.x | bash - && \
     apt-get install -y nodejs && \
     npm install -g playwright
 
+# Configure jovyan user with sudo privileges and proper permissions
+RUN echo "jovyan ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    chown -R jovyan:users /home/jovyan && \
+    chmod -R 775 /home/jovyan && \
+    chown -R jovyan:users /opt/conda && \
+    chmod -R 775 /opt/conda
 
+# Switch back to jovyan user and set home directory
+USER jovyan
+WORKDIR /home/jovyan
+ENV HOME /home/jovyan
