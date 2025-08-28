@@ -1,17 +1,8 @@
-# Dockerfile — Debian tabanlı, systemd + Python3 hazır
-FROM debian:bookworm-slim
+# Dockerfile — Docker-in-Docker (DinD)
+FROM docker:27-dind
 
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      systemd systemd-sysv dbus \
-      python3 python3-venv python3-pip ca-certificates tzdata \
-      iproute2 iputils-ping curl nano && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# Opsiyonel: Python3 veya başka araçları da kurabilirsin
+RUN apk add --no-cache bash curl python3 py3-pip
 
-# Locale/TZ opsiyonel (gerekirse aç)
-# ENV TZ=UTC
-# RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-# Varsayılan: systemd ile başlat (rootfs benzeri deneyim)
-CMD ["/sbin/init"]
+# Varsayılan olarak Docker daemon çalıştır
+CMD ["dockerd-entrypoint.sh"]
