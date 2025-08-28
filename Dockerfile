@@ -1,54 +1,52 @@
-# Base: Python + minimal Debian
-FROM python:3.11-slim
+# Binder ile uyumlu, Jupyter ve Terminal hazır
+FROM jupyter/base-notebook:python-3.11
 
-ENV DEBIAN_FRONTEND=noninteractive TZ=Europe/Istanbul
+# Root’a geç (build sırasında)
+USER root
 
-# Sistem araçları + proot + debootstrap
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash sudo tini locales ca-certificates curl git \
-    proot debootstrap xz-utils gnupg \
+# Faydalı araçlar + proot
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      proot wget ca-certificates tzdata locales less vim nano curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Locale
-RUN sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && locale-gen
-ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8
+# Ubuntu 22.04 (Jammy) minimal rootfs indir ve aç
+ARG UBUNTU_BASE_URL=https://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04.5-base-amd64.tar.gz
+RUN mkdir -p /opt/ubuntu-rootfs && \
+    wget -O /tmp/ubuntu-rootfs.tgz "${UBUNTU_BASE_URL}" && \
+    tar -xzf /tmp/ubuntu-rootfs.tgz -C /opt/ubuntu-rootfs && \
+    rm -f /tmp/ubuntu-rootfs.tgz
 
-# JupyterLab + terminal desteği
-RUN pip install --no-cache-dir \
-    jupyterlab==4.* \
-    jupyter_server_terminals==0.*
+# Rootfs için küçük ağ/locale dokunuşları
+# (DNS yoksa çöksün istemeyiz; ilk girişte proot scripti de kontrol ediyor)
+RUN echo "nameserver 1.1.1.1" > /opt/ubuntu-rootfs/etc/resolv.conf || true && \
+    chown -R ${NB_UID}:${NB_GID} /opt/ubuntu-rootfs
 
-# Çalışma dizini (root)
-WORKDIR /root/work
+# Rootfs'e giriş kısayolu
+# - Çalıştığınız klasörü rootfs içine bağlar
+# - /proc, /sys, /dev, /tmp’yi bağlar
+# - rootfs içinde /bin/bash --login açar (root yetkili gibi)
+RUN printf '%s\n' \
+'#!/usr/bin/env bash' \
+'set -e' \
+'ROOTFS="/opt/ubuntu-rootfs"' \
+'if [ ! -s "$ROOTFS/etc/resolv.conf" ]; then' \
+'  mkdir -p "$ROOTFS/etc"; echo "nameserver 1.1.1.1" > "$ROOTFS/etc/resolv.conf"' \
+'fi' \
+'exec proot -0 -r "$ROOTFS" \' \
+'  -b /proc -b /sys -b /dev -b /tmp \' \
+'  -b "$PWD":"$PWD" -w "$PWD" \' \
+'  /bin/bash --login' \
+> /usr/local/bin/rootfs && \
+chmod +x /usr/local/bin/rootfs
 
-# -------- Fake OS (proot + debootstrap) --------
-ARG DEBIAN_SUITE=bookworm
-RUN mkdir -p /fakeos && \
-    debootstrap --variant=minbase ${DEBIAN_SUITE} /fakeos http://deb.debian.org/debian && \
-    echo "deb http://deb.debian.org/debian ${DEBIAN_SUITE} main" > /fakeos/etc/apt/sources.list && \
-    echo "nameserver 1.1.1.1" > /fakeos/etc/resolv.conf
+# Jupyter kullanıcısına dön
+USER ${NB_UID}
 
-# Fake OS'e tek komutla girme script'i
-RUN printf '%s\n' '#!/usr/bin/env bash' \
-    'set -e' \
-    'exec proot -R /fakeos -b /proc -b /sys -b /dev -b /tmp -w /root /bin/bash --login' \
-  > /usr/local/bin/fakeos && chmod +x /usr/local/bin/fakeos
+# Terminal açıldığında ipucu ver
+RUN echo '' >> ~/.bashrc && \
+    echo '# === RootFS (Ubuntu 22.04) ===' >> ~/.bashrc && \
+    echo 'echo "RootFS (Ubuntu 22.04) için: rootfs komutunu çalıştırın (proot ile root)."' >> ~/.bashrc
 
-# -------- Jupyter varsayılanları: tokensiz / allows root --------
-# Not: Jupyter'i sen başlatacağın için burada yalnızca config bırakıyoruz.
-RUN mkdir -p /root/.jupyter && \
-    printf '%s\n' \
-    "c = get_config()" \
-    "c.ServerApp.token = ''" \
-    "c.ServerApp.password = ''" \
-    "c.ServerApp.open_browser = False" \
-    "c.ServerApp.allow_root = True" \
-    "c.ServerApp.terminado_settings = {'shell_command': ['/bin/bash']}" \
-    > /root/.jupyter/jupyter_server_config.py
-
-# (İsteğe bağlı) dışarıdan bağlayacağın dizinler için mount noktaları
-VOLUME ["/root/work"]
-
-# Jupyter'i nasıl başlatacağın sana ait; bu yüzden ENTRYPOINT/CMD yok.
-# Örn: container içinde (başlatma senaryonda) şunu çalıştırırsın:
-# jupyter lab --ip=0.0.0.0 --port=8888
+# Binder, repo2docker ile otomatik olarak Jupyter’i başlatır.
+# Ekstra bir CMD/ENTRYPOINT gerekmez.
