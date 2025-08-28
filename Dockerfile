@@ -1,52 +1,52 @@
-# Binder ile uyumlu, Jupyter ve Terminal hazır
 FROM jupyter/base-notebook:python-3.11
 
-# Root’a geç (build sırasında)
 USER root
-
-# Faydalı araçlar + proot
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      proot wget ca-certificates tzdata locales less vim nano curl \
+      proot wget ca-certificates tzdata locales curl nano vim less \
     && rm -rf /var/lib/apt/lists/*
 
-# Ubuntu 22.04 (Jammy) minimal rootfs indir ve aç
+# Ubuntu 22.04 minimal rootfs
 ARG UBUNTU_BASE_URL=https://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release/ubuntu-base-22.04.5-base-amd64.tar.gz
 RUN mkdir -p /opt/ubuntu-rootfs && \
     wget -O /tmp/ubuntu-rootfs.tgz "${UBUNTU_BASE_URL}" && \
     tar -xzf /tmp/ubuntu-rootfs.tgz -C /opt/ubuntu-rootfs && \
     rm -f /tmp/ubuntu-rootfs.tgz
 
-# Rootfs için küçük ağ/locale dokunuşları
-# (DNS yoksa çöksün istemeyiz; ilk girişte proot scripti de kontrol ediyor)
-RUN echo "nameserver 1.1.1.1" > /opt/ubuntu-rootfs/etc/resolv.conf || true && \
-    chown -R ${NB_UID}:${NB_GID} /opt/ubuntu-rootfs
-
-# Rootfs'e giriş kısayolu
-# - Çalıştığınız klasörü rootfs içine bağlar
-# - /proc, /sys, /dev, /tmp’yi bağlar
-# - rootfs içinde /bin/bash --login açar (root yetkili gibi)
+# Rootfs'e giriş scripti (bind YOK, DNS'i kopyala + fallback)
 RUN printf '%s\n' \
 '#!/usr/bin/env bash' \
-'set -e' \
+'set -euo pipefail' \
 'ROOTFS="/opt/ubuntu-rootfs"' \
-'if [ ! -s "$ROOTFS/etc/resolv.conf" ]; then' \
-'  mkdir -p "$ROOTFS/etc"; echo "nameserver 1.1.1.1" > "$ROOTFS/etc/resolv.conf"' \
+'RS="$ROOTFS/etc/resolv.conf"' \
+'# 1) Host resolv.conf içeriğini almaya çalış' \
+'CONTENT=""' \
+'if [ -r /etc/resolv.conf ]; then' \
+'  CONTENT="$(cat /etc/resolv.conf || true)"' \
 'fi' \
+'# 2) Eğer 127.0.0.53 (systemd stub) içeriyorsa veya boşsa fallback kullan' \
+'NEEDS_FALLBACK=0' \
+'if [ -z "${CONTENT}" ]; then NEEDS_FALLBACK=1; fi' \
+'if printf "%s" "$CONTENT" | grep -qE "127\\.0\\.0\\.53"; then NEEDS_FALLBACK=1; fi' \
+'if [ "$NEEDS_FALLBACK" -eq 1 ]; then' \
+'  CONTENT="nameserver 1.1.1.1\nnameserver 8.8.8.8\noptions timeout:2 attempts:2"' \
+'fi' \
+'mkdir -p "$ROOTFS/etc"' \
+'printf "%b\n" "$CONTENT" > "$RS"' \
+'# hosts yoksa en azından localhost satırlarını koy' \
+'HS="$ROOTFS/etc/hosts"' \
+'if [ ! -s "$HS" ]; then' \
+'  printf "127.0.0.1\tlocalhost\n::1\tlocalhost ip6-localhost ip6-loopback\n" > "$HS"' \
+'fi' \
+'# 3) proot ile rootfs içine gir' \
 'exec proot -0 -r "$ROOTFS" \' \
 '  -b /proc -b /sys -b /dev -b /tmp \' \
 '  -b "$PWD":"$PWD" -w "$PWD" \' \
 '  /bin/bash --login' \
-> /usr/local/bin/rootfs && \
-chmod +x /usr/local/bin/rootfs
+> /usr/local/bin/rootfs && chmod +x /usr/local/bin/rootfs
 
-# Jupyter kullanıcısına dön
+# Kullanıcı ayarları
+RUN chown -R ${NB_UID}:${NB_GID} /opt/ubuntu-rootfs
 USER ${NB_UID}
-
-# Terminal açıldığında ipucu ver
 RUN echo '' >> ~/.bashrc && \
-    echo '# === RootFS (Ubuntu 22.04) ===' >> ~/.bashrc && \
-    echo 'echo "RootFS (Ubuntu 22.04) için: rootfs komutunu çalıştırın (proot ile root)."' >> ~/.bashrc
-
-# Binder, repo2docker ile otomatik olarak Jupyter’i başlatır.
-# Ekstra bir CMD/ENTRYPOINT gerekmez.
+    echo '# RootFS (Ubuntu 22.04) için: terminalde "rootfs" yazın. DNS otomatik kopyalanır, gerekirse 1.1.1.1/8.8.8.8 fallback kullanılır.' >> ~/.bashrc
